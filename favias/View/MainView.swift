@@ -1,14 +1,14 @@
 import SwiftUI
 
-struct ContentView: View {
-    // Определение структуры сетки
+struct MainView: View {
     let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 10),
         GridItem(.flexible(), spacing: 10)
     ]
     
-    // Состояние для отслеживания выбранной вкладки
     @State private var selectedTab = "Рекомендации"
+    @State private var posts: [Post] = []
+    private let api = Api()
     
     var body: some View {
         TabView {
@@ -42,21 +42,38 @@ struct ContentView: View {
                     // Пользовательская панель вкладок
                     CustomTabPicker(selectedTab: $selectedTab)
                     
-                    // Сетка фотографий или содержимое подписки
+                    // Сетка для отображения постов
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 20) {
                             if selectedTab == "Рекомендации" {
-                                ForEach(0..<10) { item in
-                                    Image("photo\(item)") // Замените на имена ваших изображений
-                                        .resizable()
-                                        .scaledToFill()
+                                ForEach(posts) { post in
+                                    VStack {
+                                        // Загрузка и отображение изображения
+                                        AsyncImage(url: post.postImage) { phase in
+                                            switch phase {
+                                            case .empty:
+                                                ProgressView()
+                                            case .success(let image):
+                                                image.resizable().aspectRatio(contentMode: .fill)
+                                            case .failure:
+                                                Image(systemName: "photo") // Здесь мы используем системное изображение
+                                                    .resizable()
+                                                    .aspectRatio(contentMode: .fit)
+                                                    .frame(width: 100, height: 100)
+                                            @unknown default:
+                                                EmptyView()
+                                            }
+                                        }
                                         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 200)
                                         .cornerRadius(10)
                                         .clipped()
+
+                                        Text(post.title)
+                                            .foregroundColor(.white)
+                                    }
                                 }
                             } else {
-                                // Содержимое для вкладки "Твои подписки"
-                                Text("Твои подписки") // Тут должно быть содержимое для вкладки "Твои подписки"
+                                Text("Твои подписки")
                             }
                         }
                     }
@@ -70,7 +87,7 @@ struct ContentView: View {
             }
             
             NavigationView {
-                Text("Вторая страница") // Замените на другой экран
+                Text("Вторая страница")
             }
             .tabItem {
                 Image(systemName: "heart")
@@ -78,7 +95,13 @@ struct ContentView: View {
                     .foregroundColor(.white)
             }
         }
-        .preferredColorScheme(.dark) // Темная тема
+        .preferredColorScheme(.dark)
+        .onAppear {
+            api.getPosts { fetchedPosts in
+                print("Загруженные посты: \(fetchedPosts)") // Вывод в консоль для проверки
+                self.posts = fetchedPosts
+            }
+        }
     }
 }
 
@@ -97,7 +120,6 @@ struct CustomTabPicker: View {
                     .foregroundColor(selectedTab == tab ? .white : .gray)
                     .cornerRadius(10)
                     .overlay(
-                        // Подчеркивание для выбранной вкладки
                         Rectangle()
                             .frame(height: 2)
                             .foregroundColor(selectedTab == tab ? .white : .clear)
@@ -111,12 +133,12 @@ struct CustomTabPicker: View {
                     }
             }
         }
-        .background(Color.clear) // Убираем серый фон
+        .background(Color.clear)
     }
 }
 
-struct ContentView_Previews: PreviewProvider {
+struct MainView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
+        MainView()
     }
 }
